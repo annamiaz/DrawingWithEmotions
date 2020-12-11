@@ -4,7 +4,7 @@ let analyzer;
 let audioArray;
 
 const WIDTH = 1000;
-const HEIGHT = 1000;
+const HEIGHT = 700;
 const PAPER_OFFSET = 10;
 
 // Compute movement required for new line
@@ -15,13 +15,8 @@ var yMove = Math.round(HEIGHT * .001);
 var X_MOVE = xMove ? xMove : 1;
 var Y_MOVE = yMove ? yMove : 1;
 
-// Circle variables
-const circleSize = 42;
-const scale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-// Text variables
-let goalNote = 0;
-let currentNote = 0;
+let currPitch = 0;
 
 const currentText = '';
 let textCoordinates;
@@ -159,25 +154,24 @@ function newSheet(){
   area = paper.rect(PAPER_OFFSET,PAPER_OFFSET, WIDTH, HEIGHT);
   area.attr({fill: "ivory"});
 
-  topPos = document.getElementById("paper").offsetTop;
-  leftPos = document.getElementById("paper").offsetLeft;
-
   // EVENTS
   area.mousedown(function (event) {
+     var paperElem = document.getElementById("paper");
+     topPos = paperElem.offsetTop;
+     leftPos = paperElem.offsetLeft;
      mouseDown = true;
      start = { x: event.clientX - leftPos,
               y: event.clientY - topPos};
   });
-  area.mouseup(function (event) {
+  window.addEventListener("click", function (event){
      mouseDown = false;
-    });
+    });;
 
   area.mousemove(function (event) {
-     coordys = { x: event.clientX - leftPos,
-              y: event.clientY - topPos};
      if (mouseDown) {
+        coordys = { x: event.clientX - leftPos,
+        y: event.clientY - topPos};
         drawLine();
-
      }
 
     });
@@ -196,8 +190,8 @@ function getPitch() {
   pitch.getPitch(function (err, frequency) {
     if (frequency) {
       const midiNum = freqToMidi(frequency);
-      currentNote = midiNum;
-      document.querySelector('#currentNote').textContent += " " + currentNote;
+      currPitch = midiNum;
+      // document.querySelector('#currPitch').textContent += " " + currPitch;
       getEmotion();
     }
     if(withEmotions){
@@ -210,7 +204,7 @@ function drawLine(){
   var xMovement = Math.abs(start.x - coordys.x);
   var yMovement = Math.abs(start.y - coordys.y);
   if (xMovement > X_MOVE || yMovement > Y_MOVE) {
-  console.log(getColorStr());
+  // console.log(getColorStr());
    if(withEmotions){
      getEmotion();
    }
@@ -222,7 +216,7 @@ function drawLine(){
 function getEmotion(){
 
   // PITCH
-  emotionQ.push(currentNote);
+  emotionQ.push(currPitch);
   var avg = averageQ(emotionQ);
 
 
@@ -237,10 +231,10 @@ function getEmotion(){
    var emotionChangeAvg = calculateAverageChange(emotionQ);
    var energyChangeAvg = calculateAverageChange(energyQ);
 
-   console.log("Average: " + avg);
-   console.log("AverageChange: " + emotionChangeAvg);
-   console.log("Energy Average : " + energyAvg);
-   console.log("Energy CHange Average : " + energyChangeAvg);
+   // console.log("Average: " + avg);
+   // console.log("AverageChange: " + emotionChangeAvg);
+   // console.log("Energy Average : " + energyAvg);
+   // console.log("Energy CHange Average : " + energyChangeAvg);
 
    // interferance between colors - halbieren wieder halbieren wieder halbieren
 
@@ -291,7 +285,7 @@ function getEmotion(){
    }
 
 
-  if(currentNote > 0){
+  if(currPitch > 0){
      // sad
      if (currMood == 1){
        // blue
@@ -303,7 +297,7 @@ function getEmotion(){
        }
        // + greyer
        color.s = Math.round(prevColor.s + interpolateColor(color.s, colorSad.sMin));
-       color.l = Math.round(currentNote-20)
+       color.l = Math.round(currPitch-20)
      }
      // neutral
      else if(currMood == 2){
@@ -315,7 +309,7 @@ function getEmotion(){
          moodCount = 1;
        }
        color.s = Math.round(prevColor.s + interpolateColor(color.s, colorNeutral.sMin));
-       color.l = Math.round(currentNote-10)
+       color.l = Math.round(currPitch-10)
      }
      // happy
      else if (currMood == 3){
@@ -328,7 +322,7 @@ function getEmotion(){
        }
 
        color.s = Math.round(prevColor.s + interpolateColor(color.s, colorHappy.sMax));
-       color.l = Math.round(currentNote-10)
+       color.l = Math.round(currPitch-10)
      }
 
      // Excited
@@ -340,7 +334,7 @@ function getEmotion(){
        }
 
        color.s = Math.round(prevColor.s + interpolateColor(color.s, colorExcited.sMax));
-       color.l = Math.round(currentNote-10)
+       color.l = Math.round(currPitch-10)
      }
 
 
@@ -401,7 +395,7 @@ function clearPaper() {
 function createPaper() {
   // Create drawing Area
   const paperElement1 = document.createElement("paper");
-  var paper = Raphael("paper", 1000, 1000);
+  var paper = Raphael("paper", WIDTH, HEIGHT);
   //var sheet = paper.rect(PAPER_OFFSET,PAPER_OFFSET, WIDTH, HEIGHT)
   //sheet.attr({fill: "blue"});
 
