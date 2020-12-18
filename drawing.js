@@ -105,11 +105,10 @@ async function setup() {
   paper = createPaper(WIDTH, HEIGHT);
   textCoordinates = [WIDTH / 2, 30];
 
-
-
   newSheet();
 
   var addEmotionButton = document.getElementById("addEmotion");
+  var saveEmotionButton = document.getElementById("savePaper");
 
   audioContext = new AudioContext();
   stream = await navigator.mediaDevices.getUserMedia({
@@ -146,7 +145,31 @@ async function setup() {
    clearPaper();
  };
 
+ saveEmotionButton.onclick = function (event) {
+   var circle2 = paper.circle(70, 60, 50);
+   paper.path("M100 100L200 300").attr({"stroke-width": 3, fill: "blue"});
+   svg = paper.toSVG();
+
+   console.log(svg);
+
+   a = document.createElement('a');
+    a.download = 'emotions.svg';
+    a.type = 'image/svg';
+    blob = new Blob([svg], {"type": "image/svg"});
+    a.href = (window.URL || webkitURL).createObjectURL(blob);
+    a.click();
+    //src.appendChild(svg);
+
+    //window.webkitRequestFileSystem(window.PERSISTENT , 10024*10024, SaveDatFileBro);
+
+    document.getElementById('svgLink').innerHTML = svg;
+     //  document.getElementById('savePaper').textContent = "download emotion"
+
+ };
+
 }
+
+
 
 setup()
 
@@ -208,7 +231,11 @@ function drawLine(){
    if(withEmotions){
      getEmotion();
    }
-   paper.path("M{0} {1}Q{0},{1},{2},{3}", start.x, start.y, coordys.x, coordys.y).attr({stroke:  getColorStr(), "stroke-width": 3});
+   paper.path("M{0} {1}Q{0} {1} {2} {3}", start.x, start.y, coordys.x, coordys.y).attr({"stroke-width": 3,
+                    fill:  "rgb(0,0,0)",
+                    "stroke-linejoin": "round",
+                    "stroke-linecap":"round",
+                    stroke:  getColorStr()});
    start = coordys;
  }
 }
@@ -372,9 +399,48 @@ function calculateAverageChange(q){
 
 
 function getColorStr(){
+
+  // I Have to convert
+   var h = color.h;
+   var s = color.s;
+   var l = color.l;
+
+
+   s /= 100;
+ l /= 100;
+
+ let c = (1 - Math.abs(2 * l - 1)) * s,
+     x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+     m = l - c/2,
+     r = 0,
+     g = 0,
+     b = 0;
+
+     if (0 <= h && h < 60) {
+         r = c; g = x; b = 0;
+       } else if (60 <= h && h < 120) {
+         r = x; g = c; b = 0;
+       } else if (120 <= h && h < 180) {
+         r = 0; g = c; b = x;
+       } else if (180 <= h && h < 240) {
+         r = 0; g = x; b = c;
+       } else if (240 <= h && h < 300) {
+         r = x; g = 0; b = c;
+       } else if (300 <= h && h < 360) {
+         r = c; g = 0; b = x;
+       }
+       r = Math.round((r + m) * 255);
+       g = Math.round((g + m) * 255);
+       b = Math.round((b + m) * 255);
+
+       return "rgb(" + r + "," + g + "," + b + ")";
+
+
+
+
   // using HSL
   // hue, saturation, lightness
-  return  "hsl("+ color.h +","+ color.s +","+ color.l +")";
+  // return  "hsl("+ color.h +","+ color.s +","+ color.l +")";
 }
 
 function draw() {
@@ -385,6 +451,15 @@ function draw() {
 }
 
 
+function SaveDatFileBro(localstorage) {
+    localstorage.root.getFile("myEmotions.png", {create: true},
+    function(DatFile) {
+            DatFile.createWriter(function(DatContent) {
+                    var blob = new Blob(paper.toSVG(), {type: "image/png"});
+                    DatContent.write(blob);
+              });
+  });
+}
 
 // Clear the paper
 function clearPaper() {
