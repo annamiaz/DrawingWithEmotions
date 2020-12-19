@@ -2,4 +2,16 @@
    background-color: mistyrose;
    width: 100px;
    font-size: 16px;
+   font-family: "Lucida Console", "Courier New", monospace;
+   text-align: center;
+   height: 40px;
+   width: 200px;
+}
+
+h1{
+  font-size: 40px;
+  color: black;
+  font-family: "Lucida Console", "Courier New", monospace;
+  font-weight: bold;
+  text-transform: uppercase;
 }

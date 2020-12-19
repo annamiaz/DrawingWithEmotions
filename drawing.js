@@ -31,7 +31,7 @@ let leftPos = 0;
 var color = {
   h: 100,
   s: 100,
-  l: 50
+  l: 0
 }
 
 var prevColor = {
@@ -89,6 +89,7 @@ var energy = 1;
 let withEmotions = 0;
 const EMOTION_BUTTON_TXT_ADD = "add emotions"
 const EMOTION_BUTTON_TXT_STOP = "stop emotions"
+const EMOTION_BUTTON_TXT_LOADING = "emotions ..."
 
 
 let request;
@@ -133,7 +134,7 @@ async function setup() {
   // (START \ STOP) EMOTION
   addEmotionButton.onclick = function (event) {
     if (!withEmotions){
-      addEmotionButton.textContent = EMOTION_BUTTON_TXT_STOP
+      addEmotionButton.textContent = EMOTION_BUTTON_TXT_LOADING
       withEmotions = 1
       startPitch(stream, audioContext);
     }
@@ -170,12 +171,15 @@ async function setup() {
 setup()
 
 function newSheet(){
+
   area = paper.rect(PAPER_OFFSET,PAPER_OFFSET, WIDTH, HEIGHT);
   area.attr({fill: "ivory"});
+  var text = paper.text(WIDTH/2, HEIGHT/2, "Click to activate Pencil").attr({fill: '#000000', "text-align": "center", "font-family": "\"Lucida Console\", \"Courier New\", monospace", });
 
   // EVENTS
   window.addEventListener("click", function (event){
     if(!mouseDown){
+      text.remove();
        var paperElem = document.getElementById("paper");
        topPos = paperElem.offsetTop;
        leftPos = paperElem.offsetLeft;
@@ -204,7 +208,7 @@ function startPitch(stream, audioContext) {
 }
 
 function modelLoaded() {
-  document.querySelector('#status').textContent = 'Model Loaded';
+  document.getElementById("addEmotion").textContent = EMOTION_BUTTON_TXT_STOP;
   getPitch();
 }
 
