@@ -8,8 +8,8 @@ const HEIGHT = 700;
 const PAPER_OFFSET = 10;
 
 // Compute movement required for new line
-var xMove = Math.round(WIDTH * .001);
-var yMove = Math.round(HEIGHT * .001);
+var xMove = Math.round(WIDTH * .00001);
+var yMove = Math.round(HEIGHT * .00001);
 
 // Min must be 1
 var X_MOVE = xMove ? xMove : 1;
@@ -31,7 +31,7 @@ let leftPos = 0;
 var color = {
   h: 100,
   s: 100,
-  l: 5
+  l: 50
 }
 
 var prevColor = {
@@ -77,10 +77,14 @@ let currMood = 0;
 let prevMood = 0;
 let moodChanged = 1;
 
+let moodfactorOperation = true;
+let moodfactor = 1;
 let moodCount = 0;
 
 var emotionQ = [];
 var energyQ = [];
+var energyAvg = 1;
+var energy = 1;
 
 let withEmotions = 0;
 const EMOTION_BUTTON_TXT_ADD = "add emotions"
@@ -150,7 +154,6 @@ async function setup() {
    paper.path("M100 100L200 300").attr({"stroke-width": 3, fill: "blue"});
    svg = paper.toSVG();
 
-   console.log(svg);
 
    a = document.createElement('a');
     a.download = 'emotions.svg';
@@ -158,13 +161,6 @@ async function setup() {
     blob = new Blob([svg], {"type": "image/svg"});
     a.href = (window.URL || webkitURL).createObjectURL(blob);
     a.click();
-    //src.appendChild(svg);
-
-    //window.webkitRequestFileSystem(window.PERSISTENT , 10024*10024, SaveDatFileBro);
-
-    document.getElementById('svgLink').innerHTML = svg;
-     //  document.getElementById('savePaper').textContent = "download emotion"
-
  };
 
 }
@@ -178,16 +174,19 @@ function newSheet(){
   area.attr({fill: "ivory"});
 
   // EVENTS
-  area.mousedown(function (event) {
-     var paperElem = document.getElementById("paper");
-     topPos = paperElem.offsetTop;
-     leftPos = paperElem.offsetLeft;
-     mouseDown = true;
-     start = { x: event.clientX - leftPos,
-              y: event.clientY - topPos};
-  });
   window.addEventListener("click", function (event){
-     mouseDown = false;
+    if(!mouseDown){
+       var paperElem = document.getElementById("paper");
+       topPos = paperElem.offsetTop;
+       leftPos = paperElem.offsetLeft;
+       mouseDown = true;
+       start = { x: event.clientX - leftPos,
+                y: event.clientY - topPos};
+
+    }
+    else{
+      mouseDown = false;
+    }
     });;
 
   area.mousemove(function (event) {
@@ -231,7 +230,7 @@ function drawLine(){
    if(withEmotions){
      getEmotion();
    }
-   paper.path("M{0} {1}Q{0} {1} {2} {3}", start.x, start.y, coordys.x, coordys.y).attr({"stroke-width": 3,
+   paper.path("M{0} {1}Q{0} {1} {2} {3}", start.x, start.y, coordys.x, coordys.y).attr({"stroke-width": energyAvg*0.5 < 1 ? 1: energyAvg*0.5,
                     fill:  "rgb(0,0,0)",
                     "stroke-linejoin": "round",
                     "stroke-linecap":"round",
@@ -249,9 +248,9 @@ function getEmotion(){
 
    // ENERGY
    analyzer.getByteFrequencyData(audioArray);
-   var energy = audioArray.reduce((a, b) => a + b, 0)*0.001;
+   energy = audioArray.reduce((a, b) => a + b, 0)*0.001;
    energyQ.push(energy);
-   var energyAvg = averageQ(energyQ);
+   energyAvg = averageQ(energyQ);
 
 
 
@@ -270,6 +269,7 @@ function getEmotion(){
        prevMood = currMood;
        currMood = 1;
        moodChanged = 1;
+       moodCount = 1;
      }
      else{
        moodChanged = 0;
@@ -281,6 +281,7 @@ function getEmotion(){
        prevMood = currMood;
        currMood = 2,
        moodChanged = 1;
+       moodCount = 1;
      }
      else{
        moodChanged =0;
@@ -291,6 +292,7 @@ function getEmotion(){
        prevMood = currMood;
        currMood = 3;
        moodChanged = 1;
+       moodCount = 1;
      }
      else{
        moodChanged = 0;
@@ -301,6 +303,7 @@ function getEmotion(){
        prevMood = currMood;
        currMood = 4;
        moodChanged = 1;
+       moodCount = 1;
      }
      else{
        moodChanged = 0;
@@ -311,57 +314,69 @@ function getEmotion(){
      moodCount = 0;
    }
 
+  moodfactor = moodCount/10;
 
   if(currPitch > 0){
      // sad
      if (currMood == 1){
+
        // blue
        // color.r = Math.round((100 + color.r + prevColor.r)/3);
-       color.h = Math.round(prevColor.h + interpolateColor(color.h, colorSad.hMin)) + moodCount;
-       if(color.h < colorSad.hMin || color.h > colorSad.hMax){
-         color.h -= moodCount;
+       /*color.h = Math.round(prevColor.h + interpolateColor(color.h, colorSad.hMin)) + moodfactorOperation? moodfactor*10: moodfactor*-10;
+       if(color.h < colorSad.hMin){
+         moodfactorOperation = 1
          moodCount = 1;
        }
+       else if (color.h > colorSad.hMax) {
+         moodfactorOperation = 0
+         moodCount = 1;
+       }*/
        // + greyer
-       color.s = Math.round(prevColor.s + interpolateColor(color.s, colorSad.sMin));
-       color.l = Math.round(currPitch-20)
+       //color.s = Math.round(prevColor.s + interpolateColor(color.s, colorSad.sMax));
+       //color.l = Math.round(currPitch-20)
+       calculateEmotionColor(colorSad, 10, 20);
      }
      // neutral
      else if(currMood == 2){
+
        // greenish
        // color.r = Math.round((100 + color.r + prevColor.r)/3);
-       color.h = Math.round(prevColor.h + interpolateColor(color.h, colorNeutral.hMin)) + moodCount;
+       /*color.h = Math.round(prevColor.h + interpolateColor(color.h, colorNeutral.hMin)) + moodfactor*10;
        if(color.h < colorNeutral.hMin || color.h > colorNeutral.hMax){
          color.h -= moodCount;
          moodCount = 1;
-       }
-       color.s = Math.round(prevColor.s + interpolateColor(color.s, colorNeutral.sMin));
-       color.l = Math.round(currPitch-10)
+       }*/
+       //color.s = Math.round(prevColor.s + interpolateColor(color.s, colorNeutral.sMax));
+       // color.l = Math.round(currPitch-10)
+       calculateEmotionColor(colorNeutral, 10, 10);
      }
      // happy
      else if (currMood == 3){
+
        // yellow
        // color.r = Math.round((50 + color.r + prevColor.r)/3);
-       color.h = Math.round(prevColor.h + interpolateColor(color.h, colorHappy.hMin)) + moodCount;
+       /*color.h = Math.round(prevColor.h + interpolateColor(color.h, colorHappy.hMin)) + moodfactor;
        if(color.h < colorHappy.hMin || color.h > colorHappy.hMax){
          color.h -= moodCount;
          moodCount = 1;
-       }
+       }*/
 
-       color.s = Math.round(prevColor.s + interpolateColor(color.s, colorHappy.sMax));
-       color.l = Math.round(currPitch-10)
+       //color.s = Math.round(prevColor.s + interpolateColor(color.s, colorHappy.sMax));
+       //color.l = Math.round(currPitch-10)
+       calculateEmotionColor(colorHappy, 1, 10);
      }
 
      // Excited
      else if (currMood == 4){
-       color.h = Math.round(prevColor.h + interpolateColor(color.h, colorExcited.hMin)) + moodCount;
+       /*color.h = Math.round(prevColor.h + interpolateColor(color.h, colorExcited.hMin)) + moodfactor;
        if(color.h < colorExcited.hMin || color.h > colorExcited.hMax){
          color.h -= moodCount;
          moodCount = 1;
-       }
+       }*/
+       calculateEmotionColor(colorExcited, 1, 10);
 
-       color.s = Math.round(prevColor.s + interpolateColor(color.s, colorExcited.sMax));
-       color.l = Math.round(currPitch-10)
+       //color.s = Math.round(prevColor.s + interpolateColor(color.s, colorExcited.sMax));
+       //color.l = Math.round(currPitch-10)
      }
 
 
@@ -369,6 +384,24 @@ function getEmotion(){
        moodCount++;
    }
 
+}
+
+
+function calculateEmotionColor(emotionColor, moodMultiplyer, pitchReducer){
+  //console.log(getColorStr());
+  color.h = Math.round(prevColor.h + interpolateColor(color.h, emotionColor.hMin) + (moodfactorOperation ? (moodfactor*moodMultiplyer) : moodfactor*(-1*moodMultiplyer)));
+  //console.log(moodfactorOperation ? (moodfactor*moodMultiplyer) : moodfactor*(-1*moodMultiplyer))
+  if(color.h < emotionColor.hMin){
+    moodfactorOperation = true;
+    moodCount = 1;
+  }
+  else if (color.h > emotionColor.hMax) {
+    moodfactorOperation = false;
+    moodCount = 1;
+  }
+  // + greyer
+  color.s = Math.round(prevColor.s + interpolateColor(color.s, emotionColor.sMax));
+  color.l = Math.round(currPitch-pitchReducer)
 }
 
 function interpolateColor(color1, color2) {
@@ -405,18 +438,17 @@ function getColorStr(){
    var s = color.s;
    var l = color.l;
 
-
    s /= 100;
- l /= 100;
+   l /= 100;
 
- let c = (1 - Math.abs(2 * l - 1)) * s,
+  let c = (1 - Math.abs(2 * l - 1)) * s,
      x = c * (1 - Math.abs((h / 60) % 2 - 1)),
      m = l - c/2,
      r = 0,
      g = 0,
      b = 0;
 
-     if (0 <= h && h < 60) {
+  if (0 <= h && h < 60) {
          r = c; g = x; b = 0;
        } else if (60 <= h && h < 120) {
          r = x; g = c; b = 0;
