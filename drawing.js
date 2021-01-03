@@ -8,8 +8,8 @@ const HEIGHT = 700;
 const PAPER_OFFSET = 10;
 
 // Compute movement required for new line
-var xMove = Math.round(WIDTH * .00001);
-var yMove = Math.round(HEIGHT * .00001);
+var xMove = Math.round(WIDTH * .0001);
+var yMove = Math.round(HEIGHT * .0001);
 
 // Min must be 1
 var X_MOVE = xMove ? xMove : 1;
@@ -171,22 +171,24 @@ async function setup() {
 setup()
 
 function newSheet(){
-
+  mouseDown = false;
   area = paper.rect(PAPER_OFFSET,PAPER_OFFSET, WIDTH, HEIGHT);
   area.attr({fill: "ivory"});
   var text = paper.text(WIDTH/2, HEIGHT/2, "Click to activate Pencil").attr({fill: '#000000', "text-align": "center", "font-family": "\"Lucida Console\", \"Courier New\", monospace", });
 
   // EVENTS
-  window.addEventListener("click", function (event){
+  area.click(function (event){
     if(!mouseDown){
       text.remove();
-       var paperElem = document.getElementById("paper");
-       topPos = paperElem.offsetTop;
-       leftPos = paperElem.offsetLeft;
-       mouseDown = true;
-       start = { x: event.clientX - leftPos,
-                y: event.clientY - topPos};
+      var paperElem = document.getElementById("paper");
+      topPos = paperElem.offsetTop;
+      leftPos = paperElem.offsetLeft;
 
+      console.log("topPos: " + topPos)
+      console.log("leftPos: " + leftPos)
+      mouseDown = true;
+      start = { x: event.clientX - leftPos,
+               y: event.clientY - topPos};
     }
     else{
       mouseDown = false;
@@ -234,11 +236,18 @@ function drawLine(){
    if(withEmotions){
      getEmotion();
    }
-   paper.path("M{0} {1}Q{0} {1} {2} {3}", start.x, start.y, coordys.x, coordys.y).attr({"stroke-width": energyAvg*0.5 < 1 ? 1: energyAvg*0.5,
+   var path = paper.path("M{0} {1}Q{0} {1} {2} {3}", start.x, start.y, coordys.x, coordys.y).attr({"stroke-width": energyAvg*0.3 < 1 ? 1: energyAvg*0.3,
                     fill:  "rgb(0,0,0)",
                     "stroke-linejoin": "round",
                     "stroke-linecap":"round",
                     stroke:  getColorStr()});
+  path.mousemove(function (event) {
+                       if (mouseDown) {
+                          coordys = { x: event.clientX - leftPos,
+                          y: event.clientY - topPos};
+                          drawLine();
+                       }
+                     });
    start = coordys;
  }
 }
@@ -479,12 +488,7 @@ function getColorStr(){
   // return  "hsl("+ color.h +","+ color.s +","+ color.l +")";
 }
 
-function draw() {
-  request = requestAnimationFrame(draw)
-  clearPaper();
-  paper.circle(PAPER_OFFSET+20, PAPER_OFFSET+20, 20).attr({fill: "green"});
 
-}
 
 
 function SaveDatFileBro(localstorage) {
