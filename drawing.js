@@ -57,8 +57,8 @@ let colorNeutral = {
 }
 
 let colorHappy = {
-  hMin: 40,
-  hMax: 60,
+  hMin: 30,
+  hMax: 70,
   sMin: 80,
   sMax: 100,
   l: 50
@@ -90,6 +90,11 @@ let withEmotions = 0;
 const EMOTION_BUTTON_TXT_ADD = "add emotions"
 const EMOTION_BUTTON_TXT_STOP = "stop emotions"
 const EMOTION_BUTTON_TXT_LOADING = "emotions ..."
+const LINE_TXT = "do it in lines"
+const CIRCLE_TXT = "do it in circles"
+
+var inCircles = false;
+var darkMode = false;
 
 
 let request;
@@ -151,8 +156,6 @@ async function setup() {
  };
 
  saveEmotionButton.onclick = function (event) {
-   var circle2 = paper.circle(70, 60, 50);
-   paper.path("M100 100L200 300").attr({"stroke-width": 3, fill: "blue"});
    svg = paper.toSVG();
 
 
@@ -163,6 +166,25 @@ async function setup() {
     a.href = (window.URL || webkitURL).createObjectURL(blob);
     a.click();
  };
+
+ var circleButton = document.getElementById("doItInCircles");
+ var darkModeButton = document.getElementById("darkMode");
+ circleButton.onclick = function (event) {
+   if (!inCircles){
+     inCircles = true;
+     darkModeButton.style.visibility='visible';
+     circleButton.textContent = LINE_TXT;
+   }
+   else{
+     inCircles = false;
+     darkModeButton.style.visibility='hidden';
+     circleButton.textContent = CIRCLE_TXT;
+   }
+ }
+
+  darkModeButton.onclick = function (event) {
+    darkMode = !darkMode;
+  }
 
 }
 
@@ -231,25 +253,46 @@ function getPitch() {
 function drawLine(){
   var xMovement = Math.abs(start.x - coordys.x);
   var yMovement = Math.abs(start.y - coordys.y);
-  if (xMovement > X_MOVE || yMovement > Y_MOVE) {
-  // console.log(getColorStr());
-   if(withEmotions){
-     getEmotion();
-   }
-   var path = paper.path("M{0} {1}Q{0} {1} {2} {3}", start.x, start.y, coordys.x, coordys.y).attr({"stroke-width": energyAvg*0.3 < 1 ? 1: energyAvg*0.3,
-                    fill:  "rgb(0,0,0)",
-                    "stroke-linejoin": "round",
-                    "stroke-linecap":"round",
-                    stroke:  getColorStr()});
-  path.mousemove(function (event) {
-                       if (mouseDown) {
-                          coordys = { x: event.clientX - leftPos,
-                          y: event.clientY - topPos};
-                          drawLine();
-                       }
-                     });
-   start = coordys;
- }
+  if (inCircles && xMovement > X_MOVE || yMovement > Y_MOVE) {
+  //  console.log(getColorStr());
+     if(withEmotions){
+       getEmotion();
+     }
+
+     var act_color = getColorStr()
+     var path;
+     if(inCircles){
+       path = paper.circle(start.x, start.y, energyAvg*0.3 < 1 ? 1: energyAvg*0.3).attr({
+                       fill:  darkMode ? "rgb(0,0,0)" : act_color,
+                       "stroke-linejoin": "round",
+                       "stroke-linecap":"round",
+                       stroke:  act_color});
+     }
+     else{
+       path = paper.path("M{0} {1}Q{0} {1} {2} {3}", start.x, start.y, coordys.x, coordys.y).attr({"stroke-width": energyAvg*0.3 < 1 ? 1: energyAvg*0.3,
+                      fill:  "rgb(0,0,0)",
+                      "stroke-linejoin": "round",
+                      "stroke-linecap":"round",
+                      stroke:  getColorStr()});
+    }
+
+    path.mousemove(function (event) {
+                         if (mouseDown) {
+                            coordys = { x: event.clientX - leftPos,
+                            y: event.clientY - topPos};
+                            drawLine();
+                         }
+                       });
+     path.click(function (event) {
+                          if (!mouseDown) {
+                              mouseDown = true;
+                                            }
+                          else{
+                            mouseDown = false;
+                          }
+                                          });
+     start = coordys;
+  }
 }
 
 function getEmotion(){
@@ -402,7 +445,7 @@ function getEmotion(){
 
 function calculateEmotionColor(emotionColor, moodMultiplyer, pitchReducer){
   //console.log(getColorStr());
-  color.h = Math.round(prevColor.h + interpolateColor(color.h, emotionColor.hMin) + (moodfactorOperation ? (moodfactor*moodMultiplyer) : moodfactor*(-1*moodMultiplyer)));
+  color.h = Math.round(prevColor.h + interpolateColor(color.h, emotionColor.hMax) + (moodfactorOperation ? (moodfactor*moodMultiplyer) : moodfactor*(-1*moodMultiplyer)));
   //console.log(moodfactorOperation ? (moodfactor*moodMultiplyer) : moodfactor*(-1*moodMultiplyer))
   if(color.h < emotionColor.hMin){
     moodfactorOperation = true;
@@ -412,6 +455,7 @@ function calculateEmotionColor(emotionColor, moodMultiplyer, pitchReducer){
     moodfactorOperation = false;
     moodCount = 1;
   }
+
   // + greyer
   color.s = Math.round(prevColor.s + interpolateColor(color.s, emotionColor.sMax));
   color.l = Math.round(currPitch-pitchReducer)
@@ -479,27 +523,8 @@ function getColorStr(){
        b = Math.round((b + m) * 255);
 
        return "rgb(" + r + "," + g + "," + b + ")";
-
-
-
-
-  // using HSL
-  // hue, saturation, lightness
-  // return  "hsl("+ color.h +","+ color.s +","+ color.l +")";
 }
 
-
-
-
-function SaveDatFileBro(localstorage) {
-    localstorage.root.getFile("myEmotions.png", {create: true},
-    function(DatFile) {
-            DatFile.createWriter(function(DatContent) {
-                    var blob = new Blob(paper.toSVG(), {type: "image/png"});
-                    DatContent.write(blob);
-              });
-  });
-}
 
 // Clear the paper
 function clearPaper() {

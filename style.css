@@ -8,6 +8,18 @@
    width: 200px;
 }
 
+.darkButton{
+  background-color: midnightblue;
+  width: 100px;
+  font-size: 16px;
+  font-family: "Lucida Console", "Courier New", monospace;
+  text-align: center;
+  height: 40px;
+  width: 200px;
+  color: white;
+  visibility: hidden; 
+}
+
 h1{
   font-size: 40px;
   color: black;
