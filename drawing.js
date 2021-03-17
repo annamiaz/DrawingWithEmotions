@@ -467,7 +467,7 @@ function getEmotion() {
 
   // interferance between colors - halbieren wieder halbieren wieder halbieren
 
-  if ((avg < 65 && energyAvg <= 20)) {
+  if ((avg < 65)) {
     if (currMood != 1) {
       prevMood = currMood;
       currMood = 1;
@@ -476,7 +476,7 @@ function getEmotion() {
     } else {
       moodChanged = 0;
     }
-  } else if ((avg >= 65 && avg < 74 && energyAvg < 40 && energyChangeAvg < 1.0) || (avg < 65 && energyAvg > 20)) {
+  } else if ((avg >= 65 && avg < 74 && energyChangeAvg < 1.0) || (avg < 65 && energyAvg > 20)) {
     if (currMood != 2) {
       prevMood = currMood;
       currMood = 2,
@@ -485,7 +485,7 @@ function getEmotion() {
     } else {
       moodChanged = 0;
     }
-  } else if (avg > 74 && emotionChangeAvg < 0.5 && energyAvg < 30 && energyChangeAvg < 1.0) {
+  } else if (avg > 74 && emotionChangeAvg < 0.5 && energyChangeAvg < 1.0) {
     if (currMood != 3) {
       prevMood = currMood;
       currMood = 3;
@@ -709,8 +709,29 @@ class Particle {
   }
 
   update() {
-    this.x = this.x + random(-(energyChangeAvg+emotionChangeAvg)*50, (energyChangeAvg+emotionChangeAvg)*50);
-    this.y = this.y + random(-(energyChangeAvg+emotionChangeAvg)*50, (energyChangeAvg+emotionChangeAvg)*50);
+
+
+    var direction = {x: int(random(0,2)) == 0?-1:1, y: int(random(0,2))== 0?-1:1};
+
+
+
+
+    this.x += (energyChangeAvg+emotionChangeAvg)*50 * direction.x;     // random(-(energyChangeAvg+emotionChangeAvg)*50, (energyChangeAvg+emotionChangeAvg)*50);
+    this.y += (energyChangeAvg+emotionChangeAvg)*50 * direction.y;     // random(-(energyChangeAvg+emotionChangeAvg)*50, (energyChangeAvg+emotionChangeAvg)*50);
+
+    if (this.x > (window.innerWidth || document.documentElement.clientWidth)) {
+      this.x -= random(0, (energyChangeAvg+emotionChangeAvg)*50)
+    }
+    else if(this.x < -(window.innerWidth || document.documentElement.clientWidth)) {
+      this.x += random((energyChangeAvg+emotionChangeAvg)*50, 0)
+    }
+
+    if(this.y > (window.innerHeight || document.documentElement.clientHeight)){
+      this.y -= random(0, (energyChangeAvg+emotionChangeAvg)*50);
+    }
+    else if (this.y < -(window.innerHeight || document.documentElement.clientHeight)){
+      this.y += random((energyChangeAvg+emotionChangeAvg)*50, 0);
+    }
 
     let v = createVector(WIDTH / 2 + this.x, HEIGHT / 2 + this.y);
 
@@ -759,9 +780,6 @@ class Particle {
     var e = hist.e;
     var pos = hist.pos;
     var cf = hist.curvefactor;
-
-
-
 
 
     if (this.history.length > 2) {

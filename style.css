@@ -25,15 +25,16 @@
 }
 
 .draw4me{
-   background-color: maroon;
+   background-color: transparent;
    width: 100px;
    font-size: 16px;
    font-family: "Lucida Console", "Courier New", monospace;
    text-align: center;
    height: 40px;
    width: 180px;
-   border-radius: 50%;
-   color: white;
+   -- border-radius: 50%;
+   border: black
+   color: black;
    top: -1050px;
    position: relative;
 }
