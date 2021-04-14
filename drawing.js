@@ -1,7 +1,7 @@
 let audioStream;
 let stream;
 let analyzer;
-let audioArray;
+// stereo-analyser-node.jslet audioArray;
 
 let WIDTH = 1000;
 let HEIGHT = 700;
@@ -85,15 +85,24 @@ let moodfactorOperation = true;
 let moodfactor = 1;
 let moodCount = 0;
 
+var audioArrayL;
+var audioArrayR;
+
 var emotionQ = [];
 var energyQ = [];
 var energyAvg = 10;
 var energy = 1;
 
+var harmony = false;
+var slowDownFactor = 15;
+
 var emotionChangeAvg = 10;
 var energyChangeAvg = 10;
 
-var curvefactor = {x: 10, y: 10}
+var curvefactor = {
+  x: 10,
+  y: 10
+}
 
 let withEmotions = 0;
 const EMOTION_BUTTON_TXT_ADD = "add emotions"
@@ -123,18 +132,14 @@ let initAutoPos = {
 
 let request;
 
+// for different particles
 let vibrations = [];
-// taken from p5.Sound
-/*function freqToMidi(f) {
-  const mathlog2 = Math.log(f / 440) / Math.log(2);
-  const m = Math.round(12 * mathlog2) + 69;
-  return m;
-};*/
+// ongoing id
+let ongoing_id = 0;
 
-/*function map(n, start1, stop1, start2, stop2) {
-  const newval = (n - start1) / (stop1 - start1) * (stop2 - start2) + start2;
-  return newval;
-};*/
+// Filter for SVGs
+let filter;
+
 
 
 async function setup() {
@@ -146,17 +151,22 @@ async function setup() {
   frameRate(200)
   textCoordinates = [WIDTH / 2, 30];
 
-
-
- // "M 50 150 Q 225 20 400 150 T 750 150"
-  /*paper.path("M 50 150 Q 100 50 200 250").attr({
-    fill: "rgb(0,0,0)",
-    stroke: rgb(10,0,0)
-  });*/
-
-
-
   newSheet();
+
+
+  // Filter for lines
+  filter = paper.createFilter();
+  filter.chainEffect("feTurbulence", {
+    type: "fractalNoise",
+    baseFrequency: "0.1",
+    numOctaves: "10"
+  });
+  filter.chainEffect("feDisplacementMap", {
+    in: "SourceGraphic",
+    scale: "10"
+  });
+  filter.merge(filter.getLastResult(), "SourceGraphic");
+  //filter.chainEffect("feGaussianBlur", {stdDeviation: 1});
 
   var addEmotionButton = document.getElementById("addEmotion");
   var saveEmotionButton = document.getElementById("savePaper");
@@ -167,14 +177,27 @@ async function setup() {
     video: false
   });
 
-  analyzer = audioContext.createAnalyser();
+  var opts = {}
+  // var minDecibels = opts.minDecibels;
+  //var maxDecibels = opts.maxDecibels;
+  // var smoothingTimeConstant = opts.smoothingTimeConstant;
+
+  analyzer = new StereoAnalyserNode(audioContext, opts);
+  analyzer.fftSize = 2048;
+
+  audioArrayL = new Uint8Array(analyzer.fftSize);
+  audioArrayR = new Uint8Array(analyzer.fftSize);
+  // analyzer.connect(audioContext.destination);
+
   source = audioContext.createMediaStreamSource(stream);
   source.connect(analyzer);
 
-  analyzer.fftSize = 2048;
-  var bufferLength = analyzer.frequencyBinCount;
-  audioArray = new Uint8Array(bufferLength);
-  analyzer.getByteTimeDomainData(audioArray);
+  //analyzer.fftSize = 2048;
+  //var bufferLength = analyzer.frequencyBinCount;
+
+
+  // audioArray = new Uint8Array(bufferLength);
+  analyzer.getByteFrequencyData(audioArrayL, audioArrayR);
 
 
   // (START \ STOP) EMOTION
@@ -242,8 +265,13 @@ async function setup() {
     if (auto) {
 
       for (let i = 0; i < 5; i++) {
-        vibrations.push(new Particle(random(width), random(height)));
+        vibrations.push(new Line({
+          x: random(window.innerWidth),
+          y: random(window.innerHeight)
+        }, p5.Vector.random2D()));
+        ongoing_id++;
       }
+
       draw4me.textContent = AUTO_DRAW_STOP;
       paperText.remove()
       initAutoPos.x = random(topPos, WIDTH);
@@ -263,7 +291,6 @@ function handleFile(file) {
   // print(file);
 
   if (file.type === 'audio') {
-    console.log("audio");
     sound = loadSound(file.data, playSound, displayError, waitForSound);
 
 
@@ -282,9 +309,7 @@ function displayError() {
   // TODO ERROR
 }
 
-function waitForSound() {
-  console.log("Waiting...");
-}
+function waitForSound() {}
 
 function setPaperText() {
   paperText = paper.text(WIDTH / 2, HEIGHT / 2, "Click to activate Pencil").attr({
@@ -314,8 +339,6 @@ function newSheet() {
       topPos = paperElem.offsetTop;
       leftPos = paperElem.offsetLeft;
 
-      console.log("topPos: " + topPos)
-      console.log("leftPos: " + leftPos)
       mouseDown = true;
       start = {
         x: event.clientX - leftPos,
@@ -356,7 +379,6 @@ function getPitch() {
       currPitch = midiNum;
       // document.querySelector('#currPitch').textContent += " " + currPitch;
 
-      console.log("getEmotion")
       getEmotion();
     }
     if (withEmotions) {
@@ -374,10 +396,7 @@ function draw() {
       getEmotion();
     }
 
-    // var color_rgb = getColorStr()
-
     for (let i = 0; i < vibrations.length; i++) {
-
       vibrations[i].update();
       vibrations[i].show();
     }
@@ -398,7 +417,6 @@ function draw() {
       var yMovement = Math.abs(start.y - coordys.y);
 
       if (inCircles && xMovement > X_MOVE || yMovement > Y_MOVE) {
-        //  console.log(getColorStr());
         if (withEmotions) {
           getEmotion();
         }
@@ -412,6 +430,8 @@ function draw() {
             "stroke-linecap": "round",
             stroke: color_rgb
           });
+
+          path.filter(filter);
         } else {
           path = paper.path("M{0} {1}Q{0} {1} {2} {3}", start.x, start.y, coordys.x, coordys.y).attr({
             "stroke-width": energyAvg * 0.3 < 1 ? 1 : energyAvg * 0.3,
@@ -420,6 +440,8 @@ function draw() {
             "stroke-linecap": "round",
             stroke: getColorStr()
           });
+
+          path.filter(filter);
         }
 
         path.mousemove(function(event) {
@@ -449,59 +471,66 @@ function getEmotion() {
   // PITCH
   emotionQ.push(currPitch);
   var avg = averageQ(emotionQ);
+  console.log(emotionQ);
+  const allTheSame = (currentValue) => currentValue == currPitch;
+
+
+  harmony = emotionQ.every(allTheSame);
+  // expected output: true
 
 
   // ENERGY
-  analyzer.getByteFrequencyData(audioArray);
-  energy = audioArray.reduce((a, b) => a + b, 0) * 0.001;
+  analyzer.getByteFrequencyData(audioArrayL, audioArrayL);
+
+  energy = audioArrayL.reduce((a, b) => a + b, 0) * 0.001;
   energyQ.push(energy);
   energyAvg = averageQ(energyQ);
 
   emotionChangeAvg = calculateAverageChange(emotionQ);
   energyChangeAvg = calculateAverageChange(energyQ);
 
-  // console.log("Average: " + avg);
-  // console.log("AverageChange: " + emotionChangeAvg);
-  // console.log("Energy Average : " + energyAvg);
-  // console.log("Energy CHange Average : " + energyChangeAvg);
-
   // interferance between colors - halbieren wieder halbieren wieder halbieren
 
-  if ((avg < 65)) {
-    if (currMood != 1) {
-      prevMood = currMood;
-      currMood = 1;
-      moodChanged = 1;
-      moodCount = 1;
-    } else {
-      moodChanged = 0;
-    }
-  } else if ((avg >= 65 && avg < 74 && energyChangeAvg < 1.0) || (avg < 65 && energyAvg > 20)) {
-    if (currMood != 2) {
-      prevMood = currMood;
-      currMood = 2,
+  if (harmony) {
+    moodChanged = 0;
+  } else {
+
+    if ((avg < 60 && energyAvg <= 30)) {
+      if (currMood != 1) {
+        prevMood = currMood;
+        currMood = 1;
         moodChanged = 1;
-      moodCount = 1;
-    } else {
-      moodChanged = 0;
-    }
-  } else if (avg > 74 && emotionChangeAvg < 0.5 && energyChangeAvg < 1.0) {
-    if (currMood != 3) {
-      prevMood = currMood;
-      currMood = 3;
-      moodChanged = 1;
-      moodCount = 1;
-    } else {
-      moodChanged = 0;
-    }
-  } else { // if (avg > 74 && emotionChangeAvg >= 0.5){
-    if (currMood != 4) {
-      prevMood = currMood;
-      currMood = 4;
-      moodChanged = 1;
-      moodCount = 1;
-    } else {
-      moodChanged = 0;
+        moodCount = 1;
+      } else {
+        moodChanged = 0;
+      }
+    } else if ((avg >= 60 && avg < 74 && energyChangeAvg < 1.0) || (avg < 65 && energyAvg > 20)) {
+      if (currMood != 2) {
+        prevMood = currMood;
+        currMood = 2,
+          moodChanged = 1;
+        moodCount = 1;
+      } else {
+        moodChanged = 0;
+      }
+    } else if (avg > 74 && energyChangeAvg < 2.5) {
+      if (currMood != 3) {
+        prevMood = currMood;
+        currMood = 3;
+        moodChanged = 1;
+        moodCount = 1;
+      } else {
+        moodChanged = 0;
+      }
+    } else { // if (avg > 74 && emotionChangeAvg >= 0.5){
+      if (currMood != 4) {
+        prevMood = currMood;
+        currMood = 4;
+        moodChanged = 1;
+        moodCount = 1;
+      } else {
+        moodChanged = 0;
+      }
     }
   }
 
@@ -515,7 +544,10 @@ function getEmotion() {
     // sad
     if (currMood == 1) {
 
-      curvefactor = {x: 0, y: 0}
+      curvefactor = {
+        x: 0,
+        y: 0
+      }
 
       // blue
       // color.r = Math.round((100 + color.r + prevColor.r)/3);
@@ -536,7 +568,10 @@ function getEmotion() {
     // neutral
     else if (currMood == 2) {
 
-      curvefactor = {x: random(-10, 10), y: random(-10, 10)}
+      curvefactor = {
+        x: random(-10, 10),
+        y: random(-10, 10)
+      }
       // greenish
       // color.r = Math.round((100 + color.r + prevColor.r)/3);
       /*color.h = Math.round(prevColor.h + interpolateColor(color.h, colorNeutral.hMin)) + moodfactor*10;
@@ -551,7 +586,10 @@ function getEmotion() {
     // happy
     else if (currMood == 3) {
 
-      curvefactor = {x: random(-100, 100), y: random(-100, 100)}
+      curvefactor = {
+        x: random(-100, 100),
+        y: random(-100, 100)
+      }
       // yellow
       // color.r = Math.round((50 + color.r + prevColor.r)/3);
       /*color.h = Math.round(prevColor.h + interpolateColor(color.h, colorHappy.hMin)) + moodfactor;
@@ -572,7 +610,10 @@ function getEmotion() {
         color.h -= moodCount;
         moodCount = 1;
       }*/
-      curvefactor = {x: random(-100, 100), y: random(-100, 100)}
+      curvefactor = {
+        x: random(-100, 100),
+        y: random(-100, 100)
+      }
 
       calculateEmotionColor(colorExcited, 1, 10);
 
@@ -589,9 +630,7 @@ function getEmotion() {
 
 
 function calculateEmotionColor(emotionColor, moodMultiplyer, pitchReducer) {
-  //console.log(getColorStr());
   act_color.h = Math.round(prevColor.h + interpolateColor(act_color.h, emotionColor.hMax) + (moodfactorOperation ? (moodfactor * moodMultiplyer) : moodfactor * (-1 * moodMultiplyer)));
-  //console.log(moodfactorOperation ? (moodfactor*moodMultiplyer) : moodfactor*(-1*moodMultiplyer))
   if (act_color.h < emotionColor.hMin) {
     moodfactorOperation = true;
     moodCount = 1;
@@ -610,7 +649,7 @@ function interpolateColor(color1, color2) {
 };
 
 function averageQ(q) {
-  if (q.length > 5) {
+  if (q.length > 20) {
     q.shift();
   }
 
@@ -699,93 +738,71 @@ function createPaper() {
 }
 
 
-class Particle {
+class Line {
 
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-
+  constructor(pos, direction) {
+    this.startPos = pos;
+    this.endPos = pos;
     this.history = [];
+    this.direction = direction;
   }
 
   update() {
+    this.startPos = this.endPos;
 
-
-    var direction = {x: int(random(0,2)) == 0?-1:1, y: int(random(0,2))== 0?-1:1};
-
-
-
-
-    this.x += (energyChangeAvg+emotionChangeAvg)*50 * direction.x;     // random(-(energyChangeAvg+emotionChangeAvg)*50, (energyChangeAvg+emotionChangeAvg)*50);
-    this.y += (energyChangeAvg+emotionChangeAvg)*50 * direction.y;     // random(-(energyChangeAvg+emotionChangeAvg)*50, (energyChangeAvg+emotionChangeAvg)*50);
-
-    if (this.x > (window.innerWidth || document.documentElement.clientWidth)) {
-      this.x -= random(0, (energyChangeAvg+emotionChangeAvg)*50)
+    if(!harmony){
+        this.direction = p5.Vector.random2D();
+        slowDownFactor = 15;
     }
-    else if(this.x < -(window.innerWidth || document.documentElement.clientWidth)) {
-      this.x += random((energyChangeAvg+emotionChangeAvg)*50, 0)
+    else{
+      slowDownFactor = slowDownFactor/1.5;
     }
 
-    if(this.y > (window.innerHeight || document.documentElement.clientHeight)){
-      this.y -= random(0, (energyChangeAvg+emotionChangeAvg)*50);
-    }
-    else if (this.y < -(window.innerHeight || document.documentElement.clientHeight)){
-      this.y += random((energyChangeAvg+emotionChangeAvg)*50, 0);
+    var longness = (energyChangeAvg + emotionChangeAvg) * slowDownFactor;
+    var help = this.direction.mult(longness);
+    this.endPos = {
+      x: this.startPos.x + help.x,
+      y: this.startPos.y + help.y
+    };
+
+    var angle = 10;
+    var savetyCounter = 0;
+    while (((this.endPos.x > (window.innerWidth) || this.endPos.x < -(window.innerWidth)) || (this.endPos.y > window.innerHeight || this.endPos.y < -(window.innerHeight))) && savetyCounter < 36) {
+
+      this.endPos = {
+        x: this.startPos.x + help.rotate(angle).x,
+        y: this.startPos.y + help.rotate(angle).y
+      };
+
+      angle += 10;
+      savetyCounter++;
     }
 
-    let v = createVector(WIDTH / 2 + this.x, HEIGHT / 2 + this.y);
-
-    var pixelInfo = {
-      pos: v,
+    var lineInfo = {
+      start: this.startPos,
+      end: this.endPos,
       c: getColorStr(),
-      e: (energyAvg * 0.3 < 1 ? 1 : energyAvg * 0.3),
+      e: (energyAvg * 0.3 < 1 ? 1 : energyAvg * 0.1),
       curvefactor: curvefactor
     }
 
-    this.history.push(pixelInfo);
-
-    //console.log(this.history.length);
-
-    /*if (this.history.length > 100) {
-      this.history.splice(0, 1);
-    }*/
+    this.history.push(lineInfo);
   }
 
   show() {
-    //stroke(255);
-    //beginShape();
-
-    //for (let i = 0; i < this.history.length; i++) {
-    //if(this.history.lenght > 0){
-    /*  var hist = this.history[this.history.length - 1];
-      console.log(hist);
-      var color_rgb = hist.c;
-    if (this.history.length > 2){
-      var hist = this.history[this.history.length - 2];
-      console.log(hist);
-      var color_rgb = hist.c;
-      var e = hist.e;
-      let pos = hist.pos;
-      paper.circle(pos.x, pos.y, e).attr({
-        fill: darkMode ? "rgb(0,0,0)" : color_rgb,
-        "stroke-linejoin": "round",
-        "stroke-linecap": "round",
-        stroke: color_rgb
-      });
-    }*/
 
     var hist = this.history[this.history.length - 1];
 
     var color_rgb = hist.c;
     var e = hist.e;
-    var pos = hist.pos;
+    var start = hist.start;
+    var end = hist.end;
     var cf = hist.curvefactor;
 
 
     if (this.history.length > 2) {
-      var hist2 = this.history[this.history.length - 2];
-      var pos2 = hist2.pos;
-      paper.path("M {0} {1} Q {2} {3} {4} {5}", pos.x, pos.y, (pos.x+cf.x), (pos.y+cf.y), pos2.x, pos2.y).attr({
+
+      var path = paper.path("M {0} {1} Q {2} {3} {4} {5}", end.x, end.y, (end.x + cf.x), (end.y + cf.y), start.x, start.y).attr({
         "stroke-width": e,
         //fill: "rgb(0,0,0)",
         "stroke-linejoin": "round",
@@ -793,21 +810,8 @@ class Particle {
         stroke: color_rgb
       });
 
+      // path.filter(filter);
 
-      // Versuch 2
-      /* paper.path("M {0} {1} Q{2} {3} {4} {5}", pos.x, pos.y, pos2.x, pos2.y, pos2.x + 10, pos2.y + 10).attr({
-        "stroke-width": e,
-        fill: "rgb(0,0,0)",
-        "stroke-linejoin": "round",
-        "stroke-linecap": "round",
-        stroke: color_rgb
-      });*/
-
-      // auto = false;
     }
-
-    //noStroke();
-    //fill(200);
-    //ellipse(this.x, this.y, 24, 24);
   }
 }
