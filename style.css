@@ -1,5 +1,4 @@
 .myButtons{
-   background-color: mistyrose;
    font-size: 16px;
    font-family: "Lucida Console", "Courier New", monospace;
    text-align: center;
@@ -50,11 +49,12 @@
 h1{
   font-size: 40px;
   color: black;
+  stroke: white;
   font-family: "Lucida Console", "Courier New", monospace;
   font-weight: bold;
   text-transform: uppercase;
   background: transparent;
   top: -1050px;
-  left: 10px;
+  left: 50px;
   position: relative;
 }
