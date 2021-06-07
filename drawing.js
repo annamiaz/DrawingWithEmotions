@@ -372,7 +372,7 @@ function draw() {
         var color_rgb = getColorStr()
         var path;
         if (inCircles) {
-          path = paper.circle(start.x, start.y, energyAvg * 0.5 < 1 ? 1 : energyAvg * 0.5).attr({
+          path = paper.circle(start.x, start.y, energyAvg * 0.9 < 1 ? 1 : energyAvg * 0.9).attr({
             fill: darkMode ? "rgb(0,0,0)" : color_rgb,
             "stroke-linejoin": "round",
             "stroke-linecap": "round",
